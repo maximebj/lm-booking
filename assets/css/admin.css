@@ -4,7 +4,8 @@
 
 /* Tab icon for the booking tab */
 #woocommerce-product-data ul.wc-tabs li.lm_booking_options a::before {
-	content: "\f508"; /* Dashicons calendar-alt */
+	content: "\f508";
+	/* Dashicons calendar-alt */
 	font-family: dashicons;
 }
 
@@ -34,6 +35,14 @@
 }
 
 /* AddonManager */
+.lm-booking-addon-manager {
+	padding-bottom: 2em;
+}
+
+.lm-booking-addon-manager .regular-text {
+	float: none !important;
+}
+
 .lm-booking-addon-manager table {
 	border-collapse: collapse;
 }
@@ -47,6 +56,7 @@
 .lm-booking-addon-manager input[type="number"] {
 	padding: 4px 6px;
 }
+
 
 /* Booking status badge in orders */
 .lm-booking-order-status mark {

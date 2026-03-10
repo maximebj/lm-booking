@@ -170,7 +170,7 @@ export default function AddonManager( { initial, inputId } ) {
 			) }
 
 			{ /* Search for new add-on */ }
-			<div style={ { position: 'relative' } }>
+			<div>
 				<input
 					type="text"
 					value={ searchTerm }
@@ -187,15 +187,10 @@ export default function AddonManager( { initial, inputId } ) {
 				{ searchResults.length > 0 && (
 					<div
 						style={ {
-							position: 'absolute',
-							top: '100%',
-							left: 0,
-							right: 0,
 							maxWidth: 400,
 							background: '#fff',
 							border: '1px solid #ddd',
 							borderTop: 'none',
-							zIndex: 1000,
 							maxHeight: 200,
 							overflowY: 'auto',
 							boxShadow: '0 2px 4px rgba(0,0,0,.1)',
