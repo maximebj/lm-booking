@@ -119,11 +119,12 @@ class LM_Booking_Meta_Boxes {
 
                 update_post_meta( $post_id, '_lm_booking_addons', array_values( $sanitized ) );
 
-                // Mark new add-ons as addon-only.
-                $added = array_diff( $new_ids, $old_ids );
-                foreach ( $added as $addon_id ) {
+                // Mark all current add-ons as addon-only.
+                foreach ( $new_ids as $addon_id ) {
                     update_post_meta( $addon_id, '_lm_addon_only', 'yes' );
-                    wp_set_object_terms( $addon_id, [ 'exclude-from-catalog', 'exclude-from-search' ], 'product_visibility', true );
+                    if ( ! has_term( 'exclude-from-catalog', 'product_visibility', $addon_id ) ) {
+                        wp_set_object_terms( $addon_id, [ 'exclude-from-catalog', 'exclude-from-search' ], 'product_visibility', true );
+                    }
                 }
 
                 // Unmark removed add-ons (only if not used by another bookable product).
