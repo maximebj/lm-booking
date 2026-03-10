@@ -72,8 +72,6 @@ $product_id = $post->ID;
         <h4 style="padding-left:12px;"><?php esc_html_e( 'Horaires d\'ouverture', 'lm-booking' ); ?></h4>
         <div id="lm-booking-weekly-schedule">
             <!-- React: WeeklySchedule component mounts here -->
-            <input type="hidden" name="_lm_booking_weekly_hours" id="_lm_booking_weekly_hours"
-                   value="<?php echo esc_attr( wp_json_encode( get_post_meta( $product_id, '_lm_booking_weekly_hours', true ) ?: new stdClass() ) ); ?>" />
         </div>
     </div>
 
@@ -81,8 +79,6 @@ $product_id = $post->ID;
         <h4 style="padding-left:12px;"><?php esc_html_e( 'Exceptions de dates', 'lm-booking' ); ?></h4>
         <div id="lm-booking-date-overrides">
             <!-- React: DateOverrides component mounts here -->
-            <input type="hidden" name="_lm_booking_date_overrides" id="_lm_booking_date_overrides"
-                   value="<?php echo esc_attr( wp_json_encode( get_post_meta( $product_id, '_lm_booking_date_overrides', true ) ?: new stdClass() ) ); ?>" />
         </div>
     </div>
 
@@ -93,8 +89,6 @@ $product_id = $post->ID;
         </p>
         <div id="lm-booking-addon-manager">
             <!-- React: AddonManager component mounts here -->
-            <input type="hidden" name="_lm_booking_addons" id="_lm_booking_addons"
-                   value="<?php echo esc_attr( wp_json_encode( get_post_meta( $product_id, '_lm_booking_addons', true ) ?: [] ) ); ?>" />
         </div>
     </div>
 

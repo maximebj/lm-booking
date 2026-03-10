@@ -10,14 +10,6 @@ export default function AddonManager( { initial, inputId } ) {
 	const [ searchResults, setSearchResults ] = useState( [] );
 	const [ isSearching, setIsSearching ] = useState( false );
 
-	// Sync to hidden input.
-	useEffect( () => {
-		const input = document.getElementById( inputId );
-		if ( input ) {
-			input.value = JSON.stringify( addons );
-		}
-	}, [ addons, inputId ] );
-
 	// Debounced product search.
 	useEffect( () => {
 		if ( searchTerm.length < 2 ) {
@@ -79,6 +71,12 @@ export default function AddonManager( { initial, inputId } ) {
 
 	return (
 		<div className="lm-booking-addon-manager" style={ { padding: '0 12px 12px' } }>
+			<input
+				type="hidden"
+				name={ inputId }
+				id={ inputId }
+				value={ JSON.stringify( addons ) }
+			/>
 			{ /* Existing add-ons */ }
 			{ addons.length > 0 && (
 				<table className="widefat" style={ { marginBottom: 12 } }>

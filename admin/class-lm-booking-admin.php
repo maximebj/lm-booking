@@ -48,9 +48,9 @@ class LM_Booking_Admin {
 
         wp_localize_script( 'lm-booking-admin', 'lmBookingAdmin', [
             'productId'     => $product_id,
-            'weeklyHours'   => get_post_meta( $product_id, '_lm_booking_weekly_hours', true ) ?: '{}',
-            'dateOverrides' => get_post_meta( $product_id, '_lm_booking_date_overrides', true ) ?: '{}',
-            'addons'        => get_post_meta( $product_id, '_lm_booking_addons', true ) ?: '[]',
+            'weeklyHours'   => get_post_meta( $product_id, '_lm_booking_weekly_hours', true ) ?: [],
+            'dateOverrides' => get_post_meta( $product_id, '_lm_booking_date_overrides', true ) ?: [],
+            'addons'        => self::hydrate_addons( get_post_meta( $product_id, '_lm_booking_addons', true ) ?: [] ),
             'restUrl'       => esc_url_raw( rest_url( 'lm-booking/v1' ) ),
             'nonce'         => wp_create_nonce( 'wp_rest' ),
             'searchUrl'     => esc_url_raw( rest_url( 'wc/v3/products' ) ),
@@ -77,5 +77,21 @@ class LM_Booking_Admin {
                 'remove'       => __( 'Retirer', 'lm-booking' ),
             ],
         ] );
+    }
+
+    /**
+     * Hydrate stored add-on entries with product name, price and image.
+     */
+    private static function hydrate_addons( array $addons ): array {
+        return array_values( array_filter( array_map( function ( $addon ) {
+            $product = wc_get_product( $addon['product_id'] ?? 0 );
+            if ( ! $product ) {
+                return null;
+            }
+            $addon['name']  = $product->get_name();
+            $addon['price'] = (float) $product->get_price();
+            $addon['image'] = wp_get_attachment_image_url( $product->get_image_id(), 'thumbnail' );
+            return $addon;
+        }, $addons ) ) );
     }
 }

@@ -1,7 +1,7 @@
 /**
  * DateOverrides — admin component for managing date exceptions (holidays, special hours).
  */
-import { useState, useEffect } from '@wordpress/element';
+import { useState } from '@wordpress/element';
 
 export default function DateOverrides( { initial, inputId } ) {
 	const [ overrides, setOverrides ] = useState( () => {
@@ -15,23 +15,19 @@ export default function DateOverrides( { initial, inputId } ) {
 		return [];
 	} );
 
-	// Sync to hidden input as object keyed by date.
-	useEffect( () => {
-		const input = document.getElementById( inputId );
-		if ( input ) {
-			const obj = {};
-			overrides.forEach( ( o ) => {
-				if ( o.date ) {
-					obj[ o.date ] = {
-						type: o.type || 'closed',
-						start: o.start || '',
-						end: o.end || '',
-					};
-				}
-			} );
-			input.value = JSON.stringify( obj );
-		}
-	}, [ overrides, inputId ] );
+	// Serialize overrides as object keyed by date for the hidden input.
+	const serialized = JSON.stringify(
+		overrides.reduce( ( obj, o ) => {
+			if ( o.date ) {
+				obj[ o.date ] = {
+					type: o.type || 'closed',
+					start: o.start || '',
+					end: o.end || '',
+				};
+			}
+			return obj;
+		}, {} )
+	);
 
 	const addOverride = () => {
 		setOverrides( ( prev ) => [
@@ -54,6 +50,12 @@ export default function DateOverrides( { initial, inputId } ) {
 
 	return (
 		<div className="lm-booking-date-overrides" style={ { padding: '0 12px 12px' } }>
+			<input
+				type="hidden"
+				name={ inputId }
+				id={ inputId }
+				value={ serialized }
+			/>
 			{ overrides.map( ( override, index ) => (
 				<div
 					key={ index }

@@ -1,7 +1,7 @@
 /**
  * WeeklySchedule — admin component for configuring weekly opening hours.
  */
-import { useState, useEffect } from '@wordpress/element';
+import { useState } from '@wordpress/element';
 
 const DAYS = [
 	{ key: '0', label: 'Lundi' },
@@ -24,14 +24,6 @@ export default function WeeklySchedule( { initial, inputId } ) {
 		return s;
 	} );
 
-	// Sync to hidden input.
-	useEffect( () => {
-		const input = document.getElementById( inputId );
-		if ( input ) {
-			input.value = JSON.stringify( schedule );
-		}
-	}, [ schedule, inputId ] );
-
 	const updateDay = ( key, field, value ) => {
 		setSchedule( ( prev ) => ( {
 			...prev,
@@ -41,6 +33,12 @@ export default function WeeklySchedule( { initial, inputId } ) {
 
 	return (
 		<div className="lm-booking-weekly-schedule" style={ { padding: '0 12px 12px' } }>
+			<input
+				type="hidden"
+				name={ inputId }
+				id={ inputId }
+				value={ JSON.stringify( schedule ) }
+			/>
 			<table className="widefat" style={ { maxWidth: 600 } }>
 				<thead>
 					<tr>
