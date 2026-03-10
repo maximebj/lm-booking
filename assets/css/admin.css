@@ -1,0 +1,89 @@
+/**
+ * LM Booking — Admin styles
+ */
+
+/* Tab icon for the booking tab */
+#woocommerce-product-data ul.wc-tabs li.lm_booking_options a::before {
+	content: "\f508"; /* Dashicons calendar-alt */
+	font-family: dashicons;
+}
+
+/* WeeklySchedule table */
+.lm-booking-weekly-schedule table {
+	border-collapse: collapse;
+}
+
+.lm-booking-weekly-schedule th,
+.lm-booking-weekly-schedule td {
+	padding: 6px 8px;
+}
+
+.lm-booking-weekly-schedule input[type="time"] {
+	padding: 4px 6px;
+}
+
+.lm-booking-weekly-schedule input[type="checkbox"] {
+	margin: 0;
+}
+
+/* DateOverrides */
+.lm-booking-date-overrides select,
+.lm-booking-date-overrides input[type="date"],
+.lm-booking-date-overrides input[type="time"] {
+	padding: 4px 6px;
+}
+
+/* AddonManager */
+.lm-booking-addon-manager table {
+	border-collapse: collapse;
+}
+
+.lm-booking-addon-manager th,
+.lm-booking-addon-manager td {
+	padding: 8px;
+	vertical-align: middle;
+}
+
+.lm-booking-addon-manager input[type="number"] {
+	padding: 4px 6px;
+}
+
+/* Booking status badge in orders */
+.lm-booking-order-status mark {
+	font-weight: 600;
+	padding: 0.2em 0.6em;
+	border-radius: 4px;
+}
+
+.lm-booking-order-status mark.status-pending {
+	background: #f0c33c;
+	color: #5b4306;
+}
+
+.lm-booking-order-status mark.status-confirmed {
+	background: #c6e1c6;
+	color: #1e4620;
+}
+
+.lm-booking-order-status mark.status-cancelled {
+	background: #eba3a3;
+	color: #761919;
+}
+
+.lm-booking-order-status mark.status-completed {
+	background: #c8d7e1;
+	color: #2e4453;
+}
+
+/* Show/hide product type panels */
+.show_if_booking {
+	display: none;
+}
+
+.product-type-booking .show_if_booking {
+	display: block;
+}
+
+.product-type-booking .hide_if_booking {
+	display: none !important;
+}

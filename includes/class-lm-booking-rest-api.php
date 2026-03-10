@@ -1,0 +1,233 @@
+<?php
+/**
+ * REST API endpoints for the booking system.
+ *
+ * @package LM_Booking
+ */
+
+defined( 'ABSPATH' ) || exit;
+
+class LM_Booking_REST_API {
+
+    /**
+     * Namespace for the API routes.
+     */
+    private const NAMESPACE = 'lm-booking/v1';
+
+    /**
+     * Register REST routes.
+     */
+    public function register_routes(): void {
+        register_rest_route( self::NAMESPACE, '/availability', [
+            'methods'             => WP_REST_Server::READABLE,
+            'callback'            => [ $this, 'get_availability' ],
+            'permission_callback' => '__return_true',
+            'args'                => [
+                'product_id' => [
+                    'required'          => true,
+                    'type'              => 'integer',
+                    'sanitize_callback' => 'absint',
+                ],
+                'date' => [
+                    'required'          => true,
+                    'type'              => 'string',
+                    'validate_callback' => [ $this, 'validate_date' ],
+                    'sanitize_callback' => 'sanitize_text_field',
+                ],
+            ],
+        ] );
+
+        register_rest_route( self::NAMESPACE, '/add-to-cart', [
+            'methods'             => WP_REST_Server::CREATABLE,
+            'callback'            => [ $this, 'add_to_cart' ],
+            'permission_callback' => '__return_true',
+            'args'                => [
+                'product_id' => [
+                    'required'          => true,
+                    'type'              => 'integer',
+                    'sanitize_callback' => 'absint',
+                ],
+                'start_utc' => [
+                    'required'          => true,
+                    'type'              => 'string',
+                    'sanitize_callback' => 'sanitize_text_field',
+                ],
+                'end_utc' => [
+                    'required'          => true,
+                    'type'              => 'string',
+                    'sanitize_callback' => 'sanitize_text_field',
+                ],
+                'addons' => [
+                    'required' => false,
+                    'type'     => 'array',
+                    'default'  => [],
+                ],
+            ],
+        ] );
+
+        // Product search for admin add-on manager.
+        register_rest_route( self::NAMESPACE, '/products/search', [
+            'methods'             => WP_REST_Server::READABLE,
+            'callback'            => [ $this, 'search_products' ],
+            'permission_callback' => function () {
+                return current_user_can( 'edit_products' );
+            },
+            'args' => [
+                'term' => [
+                    'required'          => true,
+                    'type'              => 'string',
+                    'sanitize_callback' => 'sanitize_text_field',
+                ],
+            ],
+        ] );
+    }
+
+    /**
+     * Validate a date string (Y-m-d).
+     */
+    public function validate_date( $value ): bool {
+        return (bool) preg_match( '/^\d{4}-\d{2}-\d{2}$/', $value );
+    }
+
+    /**
+     * GET /availability — returns available time slots for a product on a date.
+     */
+    public function get_availability( WP_REST_Request $request ): WP_REST_Response {
+        $product_id = $request->get_param( 'product_id' );
+        $date       = $request->get_param( 'date' );
+
+        $product = wc_get_product( $product_id );
+        if ( ! $product || 'booking' !== $product->get_type() ) {
+            return new WP_REST_Response(
+                [ 'message' => __( 'Produit introuvable ou non réservable.', 'lm-booking' ) ],
+                404
+            );
+        }
+
+        $slots = LM_Booking_Availability::get_available_slots( $product, $date );
+
+        $response = new WP_REST_Response( [
+            'product_id' => $product_id,
+            'date'       => $date,
+            'slots'      => $slots,
+        ] );
+
+        // Prevent caching.
+        $response->header( 'Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0' );
+
+        return $response;
+    }
+
+    /**
+     * POST /add-to-cart — adds a booking (and optional add-ons) to the WC cart.
+     */
+    public function add_to_cart( WP_REST_Request $request ): WP_REST_Response {
+        $product_id = $request->get_param( 'product_id' );
+        $start_utc  = $request->get_param( 'start_utc' );
+        $end_utc    = $request->get_param( 'end_utc' );
+        $addons     = $request->get_param( 'addons' );
+
+        // Verify product.
+        $product = wc_get_product( $product_id );
+        if ( ! $product || 'booking' !== $product->get_type() ) {
+            return new WP_REST_Response(
+                [ 'message' => __( 'Produit introuvable ou non réservable.', 'lm-booking' ) ],
+                404
+            );
+        }
+
+        // Verify availability.
+        if ( ! LM_Booking_Availability::is_slot_available( $product_id, $start_utc, $end_utc ) ) {
+            return new WP_REST_Response(
+                [ 'message' => __( 'Ce créneau n\'est plus disponible.', 'lm-booking' ) ],
+                409
+            );
+        }
+
+        // Ensure WC cart is loaded.
+        if ( ! WC()->cart ) {
+            wc_load_cart();
+        }
+
+        // Add the booking to cart.
+        $cart_item_data = [
+            '_lm_booking'       => true,
+            '_lm_booking_start' => $start_utc,
+            '_lm_booking_end'   => $end_utc,
+        ];
+
+        $cart_key = WC()->cart->add_to_cart( $product_id, 1, 0, [], $cart_item_data );
+
+        if ( ! $cart_key ) {
+            return new WP_REST_Response(
+                [ 'message' => __( 'Impossible d\'ajouter la réservation au panier.', 'lm-booking' ) ],
+                400
+            );
+        }
+
+        // Add add-ons as linked cart items.
+        if ( ! empty( $addons ) && is_array( $addons ) ) {
+            do_action( 'lm_booking_adding_addon' );
+
+            foreach ( $addons as $addon ) {
+                $addon_product_id = absint( $addon['product_id'] ?? 0 );
+                $addon_qty        = max( 1, absint( $addon['quantity'] ?? 1 ) );
+
+                if ( $addon_product_id <= 0 ) {
+                    continue;
+                }
+
+                $addon_data = [
+                    '_lm_booking_addon'      => true,
+                    '_lm_booking_parent_key' => $cart_key,
+                    '_lm_booking_parent_id'  => $product_id,
+                ];
+
+                // Check for price override.
+                $booking_addons = $product->get_booking_addons();
+                foreach ( $booking_addons as $ba ) {
+                    if ( (int) $ba['product_id'] === $addon_product_id && null !== ( $ba['price_override'] ?? null ) ) {
+                        $addon_data['_lm_booking_price_override'] = (float) $ba['price_override'];
+                        break;
+                    }
+                }
+
+                WC()->cart->add_to_cart( $addon_product_id, $addon_qty, 0, [], $addon_data );
+            }
+        }
+
+        return new WP_REST_Response( [
+            'success'  => true,
+            'cart_key' => $cart_key,
+            'cart_url' => wc_get_cart_url(),
+            'message'  => __( 'Réservation ajoutée au panier !', 'lm-booking' ),
+        ] );
+    }
+
+    /**
+     * GET /products/search — search simple products for the add-on manager.
+     */
+    public function search_products( WP_REST_Request $request ): WP_REST_Response {
+        $term = $request->get_param( 'term' );
+
+        $products = wc_get_products( [
+            'status' => 'publish',
+            'type'   => 'simple',
+            'limit'  => 20,
+            's'      => $term,
+        ] );
+
+        $results = array_map( function ( WC_Product $product ) {
+            return [
+                'id'        => $product->get_id(),
+                'name'      => $product->get_name(),
+                'price'     => (float) $product->get_price(),
+                'image'     => wp_get_attachment_image_url( $product->get_image_id(), 'thumbnail' ),
+                'stock_qty' => $product->get_stock_quantity(),
+                'in_stock'  => $product->is_in_stock(),
+            ];
+        }, $products );
+
+        return new WP_REST_Response( $results );
+    }
+}

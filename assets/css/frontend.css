@@ -1,0 +1,379 @@
+/**
+ * LM Booking — Frontend styles
+ */
+
+/* ── Form container ─────────────────────────────────────────────────── */
+.lm-booking-form {
+	max-width: 480px;
+	margin: 1.5em 0;
+}
+
+/* ── Steps ──────────────────────────────────────────────────────────── */
+.lm-booking-step {
+	margin-bottom: 1.5em;
+}
+
+.lm-booking-step-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 1em;
+	flex-wrap: wrap;
+}
+
+.lm-booking-step-title {
+	font-size: 1.1em;
+	font-weight: 600;
+	margin: 0 0 0.75em;
+}
+
+.lm-booking-back-link {
+	background: none;
+	border: none;
+	color: var(--wp--preset--color--primary, #2271b1);
+	cursor: pointer;
+	font-size: 0.85em;
+	padding: 0;
+	text-decoration: underline;
+}
+
+.lm-booking-back-link:hover {
+	text-decoration: none;
+}
+
+/* ── Date Picker ────────────────────────────────────────────────────── */
+.lm-booking-datepicker {
+	border: 1px solid #ddd;
+	border-radius: 8px;
+	overflow: hidden;
+	user-select: none;
+}
+
+.lm-booking-datepicker-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 0.75em 1em;
+	background: #f8f8f8;
+	border-bottom: 1px solid #eee;
+}
+
+.lm-booking-datepicker-title {
+	font-weight: 600;
+	text-transform: capitalize;
+}
+
+.lm-booking-datepicker-nav {
+	background: none;
+	border: none;
+	font-size: 1.5em;
+	cursor: pointer;
+	padding: 0 0.25em;
+	line-height: 1;
+	color: #333;
+	border-radius: 4px;
+	transition: background 0.15s;
+}
+
+.lm-booking-datepicker-nav:hover {
+	background: #e8e8e8;
+}
+
+.lm-booking-datepicker-grid {
+	display: grid;
+	grid-template-columns: repeat(7, 1fr);
+	gap: 2px;
+	padding: 0.5em;
+}
+
+.lm-booking-datepicker-dayname {
+	text-align: center;
+	font-size: 0.75em;
+	font-weight: 600;
+	color: #888;
+	padding: 0.5em 0;
+	text-transform: uppercase;
+}
+
+.lm-booking-datepicker-empty {
+	/* Blank cell */
+}
+
+.lm-booking-datepicker-day {
+	aspect-ratio: 1;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	border: none;
+	background: none;
+	border-radius: 50%;
+	cursor: pointer;
+	font-size: 0.9em;
+	transition: all 0.15s;
+}
+
+.lm-booking-datepicker-day:hover:not(:disabled) {
+	background: #e9f0ff;
+}
+
+.lm-booking-datepicker-day.selected {
+	background: var(--wp--preset--color--primary, #2271b1);
+	color: #fff;
+	font-weight: 600;
+}
+
+.lm-booking-datepicker-day.disabled {
+	color: #ccc;
+	cursor: default;
+}
+
+/* ── Time Slot Grid ─────────────────────────────────────────────────── */
+.lm-booking-slots-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+	gap: 0.5em;
+}
+
+.lm-booking-slot {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 0.25em;
+	padding: 0.75em 0.5em;
+	border: 2px solid #e0e0e0;
+	border-radius: 8px;
+	background: #fff;
+	cursor: pointer;
+	transition: all 0.15s;
+}
+
+.lm-booking-slot:hover:not(:disabled) {
+	border-color: var(--wp--preset--color--primary, #2271b1);
+	box-shadow: 0 0 0 1px var(--wp--preset--color--primary, #2271b1);
+}
+
+.lm-booking-slot.selected {
+	border-color: var(--wp--preset--color--primary, #2271b1);
+	background: #e9f0ff;
+	box-shadow: 0 0 0 1px var(--wp--preset--color--primary, #2271b1);
+}
+
+.lm-booking-slot.unavailable {
+	opacity: 0.5;
+	cursor: not-allowed;
+	border-color: #eee;
+}
+
+.lm-booking-slot-time {
+	font-weight: 600;
+	font-size: 1em;
+}
+
+.lm-booking-slot-price {
+	font-size: 0.85em;
+	color: #555;
+}
+
+.lm-booking-slot-status {
+	font-size: 0.75em;
+	color: #888;
+}
+
+.lm-booking-slots-loading,
+.lm-booking-slots-empty,
+.lm-booking-slots-error {
+	padding: 1em;
+	text-align: center;
+	color: #666;
+	font-style: italic;
+}
+
+.lm-booking-slots-error {
+	color: #d63638;
+}
+
+/* ── Add-ons ────────────────────────────────────────────────────────── */
+.lm-booking-addons {
+	display: flex;
+	flex-direction: column;
+	gap: 0.5em;
+}
+
+.lm-booking-addon {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 0.75em 1em;
+	border: 1px solid #e0e0e0;
+	border-radius: 8px;
+	background: #fff;
+	transition: all 0.15s;
+}
+
+.lm-booking-addon.active {
+	border-color: var(--wp--preset--color--primary, #2271b1);
+	background: #f5f8ff;
+}
+
+.lm-booking-addon.included {
+	background: #f0f8f0;
+	border-color: #a3d9a5;
+}
+
+.lm-booking-addon-info {
+	display: flex;
+	align-items: center;
+	gap: 0.75em;
+}
+
+.lm-booking-addon-image {
+	width: 40px;
+	height: 40px;
+	object-fit: cover;
+	border-radius: 6px;
+}
+
+.lm-booking-addon-details {
+	display: flex;
+	flex-direction: column;
+	gap: 0.15em;
+}
+
+.lm-booking-addon-name {
+	font-weight: 500;
+}
+
+.lm-booking-addon-price {
+	font-size: 0.85em;
+	color: #555;
+}
+
+.lm-booking-addon-badge {
+	display: inline-block;
+	font-size: 0.75em;
+	padding: 0.1em 0.5em;
+	border-radius: 4px;
+	font-weight: 600;
+	width: fit-content;
+}
+
+.lm-booking-addon-badge.included {
+	background: #d4edda;
+	color: #155724;
+}
+
+.lm-booking-addon-controls {
+	display: flex;
+	align-items: center;
+	gap: 0.5em;
+}
+
+.lm-booking-addon-btn {
+	width: 28px;
+	height: 28px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	border: 1px solid #ddd;
+	border-radius: 50%;
+	background: #fff;
+	cursor: pointer;
+	font-size: 1em;
+	line-height: 1;
+	transition: all 0.15s;
+}
+
+.lm-booking-addon-btn:hover:not(:disabled) {
+	background: #f0f0f0;
+}
+
+.lm-booking-addon-btn:disabled {
+	opacity: 0.4;
+	cursor: not-allowed;
+}
+
+.lm-booking-addon-qty {
+	min-width: 1.5em;
+	text-align: center;
+	font-weight: 600;
+}
+
+.lm-booking-addon-oos {
+	font-size: 0.8em;
+	color: #d63638;
+	font-style: italic;
+}
+
+/* ── Summary ────────────────────────────────────────────────────────── */
+.lm-booking-summary {
+	background: #f8f8f8;
+	border-radius: 8px;
+	padding: 1em 1.25em;
+	margin-bottom: 1em;
+}
+
+.lm-booking-summary-title {
+	font-size: 1em;
+	margin: 0 0 0.75em;
+	font-weight: 600;
+}
+
+.lm-booking-summary-row {
+	display: flex;
+	justify-content: space-between;
+	padding: 0.3em 0;
+	font-size: 0.9em;
+}
+
+.lm-booking-summary-row.addon {
+	color: #555;
+	font-size: 0.85em;
+}
+
+.lm-booking-summary-row.total {
+	border-top: 1px solid #ddd;
+	margin-top: 0.5em;
+	padding-top: 0.5em;
+	font-size: 1em;
+}
+
+/* ── Submit button ──────────────────────────────────────────────────── */
+.lm-booking-submit {
+	width: 100%;
+	padding: 0.75em 1.5em;
+	font-size: 1.1em;
+	font-weight: 600;
+	border-radius: 6px;
+	cursor: pointer;
+}
+
+.lm-booking-submit:disabled {
+	opacity: 0.7;
+	cursor: wait;
+}
+
+/* ── Messages ───────────────────────────────────────────────────────── */
+.lm-booking-message {
+	padding: 0.75em 1em;
+	border-radius: 6px;
+	margin-bottom: 1em;
+	font-size: 0.9em;
+}
+
+.lm-booking-message--success {
+	background: #d4edda;
+	color: #155724;
+	border: 1px solid #c3e6cb;
+}
+
+.lm-booking-message--error {
+	background: #f8d7da;
+	color: #721c24;
+	border: 1px solid #f5c6cb;
+}
+
+/* ── Cart add-on indent ─────────────────────────────────────────────── */
+.lm-booking-addon-indent {
+	color: #999;
+	font-size: 0.9em;
+}
