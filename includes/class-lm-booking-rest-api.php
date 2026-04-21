@@ -171,11 +171,14 @@ class LM_Booking_REST_API {
         if ( ! empty( $addons ) && is_array( $addons ) ) {
             LM_Booking_Addons::$adding_addon_context = true;
 
+            $booking_addons        = $product->get_booking_addons();
+            $allowed_addon_ids     = array_map( fn( $ba ) => (int) $ba['product_id'], $booking_addons );
+
             foreach ( $addons as $addon ) {
                 $addon_product_id = absint( $addon['product_id'] ?? 0 );
                 $addon_qty        = max( 1, absint( $addon['quantity'] ?? 1 ) );
 
-                if ( $addon_product_id <= 0 ) {
+                if ( $addon_product_id <= 0 || ! in_array( $addon_product_id, $allowed_addon_ids, true ) ) {
                     continue;
                 }
 
@@ -185,8 +188,7 @@ class LM_Booking_REST_API {
                     '_lm_booking_parent_id'  => $product_id,
                 ];
 
-                // Check for price override.
-                $booking_addons = $product->get_booking_addons();
+                // Apply price override if configured.
                 foreach ( $booking_addons as $ba ) {
                     if ( (int) $ba['product_id'] === $addon_product_id && null !== ( $ba['price_override'] ?? null ) ) {
                         $addon_data['_lm_booking_price_override'] = (float) $ba['price_override'];
