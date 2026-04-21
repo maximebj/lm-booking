@@ -113,7 +113,7 @@ class LM_Booking {
             return;
         }
 
-        global $product;
+        $product = wc_get_product( get_queried_object_id() );
         if ( ! $product instanceof WC_Product || 'booking' !== $product->get_type() ) {
             return;
         }
