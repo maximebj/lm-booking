@@ -166,8 +166,10 @@ class LM_Booking_REST_API {
         }
 
         // Add add-ons as linked cart items.
+        $addon_errors = [];
+
         if ( ! empty( $addons ) && is_array( $addons ) ) {
-            do_action( 'lm_booking_adding_addon' );
+            LM_Booking_Addons::$adding_addon_context = true;
 
             foreach ( $addons as $addon ) {
                 $addon_product_id = absint( $addon['product_id'] ?? 0 );
@@ -192,15 +194,22 @@ class LM_Booking_REST_API {
                     }
                 }
 
-                WC()->cart->add_to_cart( $addon_product_id, $addon_qty, 0, [], $addon_data );
+                $addon_key = WC()->cart->add_to_cart( $addon_product_id, $addon_qty, 0, [], $addon_data );
+
+                if ( ! $addon_key ) {
+                    $addon_errors[] = $addon_product_id;
+                }
             }
+
+            LM_Booking_Addons::$adding_addon_context = false;
         }
 
         return new WP_REST_Response( [
-            'success'  => true,
-            'cart_key' => $cart_key,
-            'cart_url' => wc_get_cart_url(),
-            'message'  => __( 'Réservation ajoutée au panier !', 'lm-booking' ),
+            'success'       => true,
+            'cart_key'      => $cart_key,
+            'cart_url'      => wc_get_cart_url(),
+            'message'       => __( 'Réservation ajoutée au panier !', 'lm-booking' ),
+            'addon_errors'  => $addon_errors,
         ] );
     }
 
