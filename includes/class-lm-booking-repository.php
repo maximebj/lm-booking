@@ -220,6 +220,32 @@ class LM_Booking_Repository {
     }
 
     /**
+     * Get all bookings whose start falls within a UTC datetime range.
+     * Used by the admin calendar to display bookings for a given month.
+     *
+     * @param string $start_utc  Range start (Y-m-d H:i:s UTC, inclusive).
+     * @param string $end_utc    Range end   (Y-m-d H:i:s UTC, exclusive).
+     * @return array<object>
+     */
+    public static function get_by_month( string $start_utc, string $end_utc ): array {
+        global $wpdb;
+
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+        return $wpdb->get_results(
+            $wpdb->prepare(
+                "SELECT * FROM %i
+                 WHERE start_datetime >= %s
+                   AND start_datetime < %s
+                   AND status IN ('pending', 'confirmed', 'completed')
+                 ORDER BY start_datetime ASC",
+                self::table_name(),
+                $start_utc,
+                $end_utc
+            )
+        );
+    }
+
+    /**
      * Delete a booking (use sparingly — prefer status changes).
      */
     public static function delete( int $booking_id ): bool {

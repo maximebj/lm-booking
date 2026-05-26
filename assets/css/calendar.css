@@ -1,0 +1,608 @@
+/* ==========================================================================
+   LM Booking — Admin calendar
+   ========================================================================== */
+
+:root {
+  /* ── Statuts (chips, cartes, légende, select) ── */
+  /* Jaune  = en attente ou en cours (pending, confirmed) */
+  /* Vert   = terminé (completed)                        */
+  /* Rouge  = annulé                                     */
+  --lm-progress: #dba617; /* jaune — en cours  */
+  --lm-done: #00a32a; /* vert  — terminé   */
+  --lm-cancelled: #d63638; /* rouge — annulé    */
+
+  /* ── Interface WP Admin ── */
+  /* --wp-admin-theme-color est injecté par WordPress (varie selon le schéma choisi) */
+  --lm-dark: #1d2327; /* en-têtes, texte principal */
+  --lm-border: #c3c4c7; /* bordures grille / panneau  */
+  --lm-border-light: #dcdcde; /* bordures cartes            */
+  --lm-light: #f0f0f1; /* texte sur fond sombre      */
+}
+
+.lm-calendar-wrap {
+  max-width: 1600px;
+}
+
+/* --------------------------------------------------------------------------
+   Layout : grille + panneau côte à côte
+   -------------------------------------------------------------------------- */
+.lm-calendar-layout {
+  display: flex;
+  gap: 20px;
+  margin-top: 4px;
+}
+
+.lm-calendar-main {
+  flex: 1;
+  min-width: 0;
+}
+
+/* --------------------------------------------------------------------------
+   Navigation bar
+   -------------------------------------------------------------------------- */
+.lm-calendar-nav {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0 0 10px;
+  flex-wrap: wrap;
+}
+
+.lm-calendar-title {
+  margin: 0;
+  flex: 1;
+  text-align: center;
+  font-size: 1.4em;
+  font-weight: 600;
+  color: var(--lm-dark);
+}
+
+.lm-today-btn {
+  margin-left: auto;
+}
+
+/* --------------------------------------------------------------------------
+   Legend
+   -------------------------------------------------------------------------- */
+.lm-calendar-legend {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+}
+
+.lm-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8em;
+  color: #3c434a;
+}
+
+.lm-legend-item::before {
+  content: "";
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+}
+
+.lm-legend--pending::before   { background: var(--lm-progress);  }
+.lm-legend--completed::before { background: var(--lm-done);      }
+.lm-legend--cancelled::before { background: var(--lm-cancelled); }
+
+/* --------------------------------------------------------------------------
+   Calendar grid
+   -------------------------------------------------------------------------- */
+.lm-calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  /* First row (headers) = natural height; all day rows = fixed 160px */
+  grid-template-rows: auto;
+  grid-auto-rows: 160px;
+  gap: 1px;
+  background: var(--lm-border);
+  border: 1px solid var(--lm-border);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+/* --------------------------------------------------------------------------
+   Header row (day names)
+   -------------------------------------------------------------------------- */
+.lm-cal-header {
+  background: var(--lm-dark);
+  color: var(--lm-light);
+  text-align: center;
+  padding: 9px 4px;
+  font-size: 0.78em;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+/* --------------------------------------------------------------------------
+   Day cells
+   -------------------------------------------------------------------------- */
+.lm-cal-cell {
+  background: #fff;
+  padding: 8px 7px;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  box-sizing: border-box;
+}
+
+.lm-cal-cell--empty {
+  background: #f6f7f7;
+}
+
+.lm-cal-cell--today {
+  background: #f0f6fc;
+}
+
+.lm-cal-cell--today .lm-cal-day-num {
+  background: var(--wp-admin-theme-color);
+  color: #fff;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.82em;
+}
+
+.lm-cal-day-num {
+  display: inline-block;
+  font-size: 0.82em;
+  font-weight: 600;
+  color: #50575e;
+  line-height: 1;
+  min-width: 24px;
+  text-align: center;
+}
+
+/* --------------------------------------------------------------------------
+   Bookings list inside a cell — scrollable, day number stays visible
+   -------------------------------------------------------------------------- */
+.lm-cal-bookings {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin-top: 2px;
+  min-width: 0;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+/* --------------------------------------------------------------------------
+   Booking chips
+   -------------------------------------------------------------------------- */
+.lm-chip {
+  display: flex;
+  align-items: flex-start;
+  gap: 5px;
+  padding: 4px 6px;
+  border-radius: 3px;
+  font-size: 0.76em;
+  line-height: 1.35;
+  color: #fff;
+  background: var(--wp-admin-theme-color);
+  overflow: hidden;
+  min-width: 0;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
+  pointer-events: none;
+}
+
+.lm-chip--pending,
+.lm-chip--confirmed {
+  background: var(--lm-progress);
+}
+.lm-chip--completed {
+  background: var(--lm-done);
+}
+.lm-chip--cancelled {
+  background: var(--lm-cancelled);
+}
+
+/* Product thumbnail */
+.lm-chip-img {
+  width: 30px;
+  height: 30px;
+  object-fit: cover;
+  border-radius: 2px;
+  flex-shrink: 0;
+  align-self: center;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+/* Text block */
+.lm-chip-body {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-width: 0;
+  flex: 1;
+}
+
+.lm-chip-time {
+  font-weight: 700;
+  font-size: 0.9em;
+  white-space: nowrap;
+  opacity: 0.95;
+}
+
+.lm-chip-product {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  opacity: 0.9;
+}
+
+.lm-chip-customer {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 0.88em;
+  opacity: 0.8;
+}
+
+/* --------------------------------------------------------------------------
+   Cellule sélectionnée
+   -------------------------------------------------------------------------- */
+.lm-cal-cell[data-date] {
+  cursor: pointer;
+}
+
+.lm-cal-cell--selected {
+  background: #e8f0fe !important;
+  box-shadow: inset 0 0 0 2px var(--wp-admin-theme-color);
+}
+
+/* --------------------------------------------------------------------------
+   Empty state
+   -------------------------------------------------------------------------- */
+.lm-calendar-empty {
+  margin-top: 20px;
+  color: #646970;
+  font-style: italic;
+}
+
+/* ==========================================================================
+   Panneau de détail journalier
+   ========================================================================== */
+.lm-day-panel {
+  width: 340px;
+  flex-shrink: 0;
+  background: #fff;
+  border: 1px solid var(--lm-border);
+  border-radius: 4px;
+  display: flex;
+  flex-direction: column;
+}
+
+/* --------------------------------------------------------------------------
+   En-tête du panneau
+   -------------------------------------------------------------------------- */
+.lm-day-panel__header {
+  background: var(--lm-dark);
+  color: var(--lm-light);
+  padding: 12px 14px 10px;
+  flex-shrink: 0;
+}
+
+.lm-day-panel__top-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.lm-day-panel__label {
+  font-size: 0.72em;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  opacity: 0.65;
+  font-weight: 600;
+}
+
+/* Bouton "Aujourd'hui" sur fond sombre */
+.lm-day-panel__header .button {
+  color: var(--lm-light) !important;
+  border-color: rgba(255, 255, 255, 0.3) !important;
+  background: rgba(255, 255, 255, 0.1) !important;
+  box-shadow: none !important;
+  text-shadow: none !important;
+}
+
+.lm-day-panel__header .button:hover {
+  background: rgba(255, 255, 255, 0.2) !important;
+  border-color: rgba(255, 255, 255, 0.45) !important;
+}
+
+.lm-day-panel__nav-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.lm-day-panel__title {
+  flex: 1;
+  margin: 0;
+  font-size: 0.88em;
+  font-weight: 600;
+  color: #fff;
+  text-align: center;
+  line-height: 1.3;
+}
+
+.lm-day-nav-btn {
+  background: none;
+  border: none;
+  color: var(--lm-light);
+  cursor: pointer;
+  font-size: 1.1em;
+  padding: 3px 7px;
+  border-radius: 3px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.lm-day-nav-btn:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+/* --------------------------------------------------------------------------
+   Corps scrollable du panneau
+   -------------------------------------------------------------------------- */
+.lm-day-panel__body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.lm-day-empty {
+  color: #646970;
+  font-style: italic;
+  text-align: center;
+  margin-top: 24px;
+}
+
+/* ==========================================================================
+   Cartes de réservation (panneau journalier)
+   ========================================================================== */
+.lm-bcard {
+  background: #f6f7f7;
+  border: 1px solid var(--lm-border-light);
+  border-left: 4px solid var(--wp-admin-theme-color);
+  border-radius: 4px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 0.84em;
+}
+
+.lm-bcard--pending,
+.lm-bcard--confirmed {
+  border-left-color: var(--lm-progress);
+}
+.lm-bcard--completed {
+  border-left-color: var(--lm-done);
+}
+.lm-bcard--cancelled {
+  border-left-color: var(--lm-cancelled);
+}
+
+/* Ligne haute : image + infos + lien commande */
+.lm-bcard__top {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.lm-bcard__img {
+  width: 48px;
+  height: 48px;
+  object-fit: cover;
+  border-radius: 3px;
+  flex-shrink: 0;
+  border: 1px solid var(--lm-border-light);
+}
+
+.lm-bcard__img--placeholder {
+  width: 48px;
+  height: 48px;
+  background: #e0e0e0;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+.lm-bcard__info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.lm-bcard__time {
+  font-weight: 700;
+  color: var(--lm-dark);
+  font-size: 1em;
+}
+
+.lm-bcard__product {
+  color: #3c434a;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Select stylé en badge — préfixé .lm-calendar-wrap pour battre .wp-core-ui select */
+.lm-calendar-wrap .lm-bcard__status-select {
+  -webkit-appearance: none;
+  appearance: none;
+  display: inline-block;
+  height: auto;
+  min-height: 28px;
+  border: none;
+  border-radius: 10px;
+  padding: 1px 16px 1px 7px;
+  font-size: 0.9em;
+  font-weight: 600;
+  line-height: 1.6;
+  color: #fff;
+  cursor: pointer;
+  align-self: flex-start;
+  background-color: var(--lm-progress);
+  /* Chevron blanc */
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23fff'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 5px center;
+  background-size: 7px 4px;
+  transition: opacity 0.15s;
+  box-shadow: none;
+}
+
+.lm-calendar-wrap .lm-bcard__status-select:focus {
+  outline: 2px solid var(--wp-admin-theme-color);
+  outline-offset: 1px;
+  box-shadow: none;
+}
+
+/* Couleurs par statut WC */
+.lm-calendar-wrap .lm-bcard__status-select--pending,
+.lm-calendar-wrap .lm-bcard__status-select--on-hold,
+.lm-calendar-wrap .lm-bcard__status-select--processing {
+  background-color: var(--lm-progress);
+}
+.lm-calendar-wrap .lm-bcard__status-select--completed {
+  background-color: var(--lm-done);
+}
+.lm-calendar-wrap .lm-bcard__status-select--cancelled,
+.lm-calendar-wrap .lm-bcard__status-select--refunded,
+.lm-calendar-wrap .lm-bcard__status-select--failed {
+  background-color: var(--lm-cancelled);
+}
+
+.lm-bcard__order-link {
+  font-size: 0.85em;
+  color: var(--wp-admin-theme-color);
+  text-decoration: none;
+  white-space: nowrap;
+  flex-shrink: 0;
+  align-self: flex-start;
+}
+
+.lm-bcard__order-link:hover {
+  text-decoration: underline;
+}
+
+/* Ligne client */
+.lm-bcard__customer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--lm-border-light);
+  flex-wrap: wrap;
+}
+
+.lm-bcard__name {
+  font-weight: 600;
+  color: var(--lm-dark);
+}
+
+.lm-bcard__phone {
+  color: var(--wp-admin-theme-color);
+  text-decoration: none;
+  font-size: 0.92em;
+}
+
+.lm-bcard__phone:hover {
+  text-decoration: underline;
+}
+
+/* Prix */
+.lm-bcard__footer {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.lm-bcard__price {
+  font-size: 1.15em;
+  font-weight: 700;
+  color: var(--lm-dark);
+}
+
+/* Add-ons */
+.lm-bcard__addons {
+  border-top: 1px solid var(--lm-border-light);
+  padding-top: 7px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.lm-bcard__addons-label {
+  font-size: 0.78em;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #646970;
+  font-weight: 600;
+  margin-bottom: 1px;
+}
+
+.lm-bcard__addon {
+  display: flex;
+  justify-content: space-between;
+  color: #50575e;
+}
+
+/* --------------------------------------------------------------------------
+   Responsive
+   -------------------------------------------------------------------------- */
+
+/* Sous 1100px : panel passe sous le calendrier */
+@media (max-width: 1100px) {
+  .lm-calendar-layout {
+    flex-direction: column;
+  }
+
+  .lm-day-panel {
+    width: 100%;
+    position: static;
+    max-height: none;
+  }
+}
+
+/* Sous 900px : grille plus compacte */
+@media (max-width: 900px) {
+  .lm-calendar-grid {
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    grid-auto-rows: 90px;
+  }
+
+  .lm-cal-cell {
+    padding: 5px 4px;
+  }
+
+  .lm-chip-product,
+  .lm-chip-customer {
+    display: none;
+  }
+
+  .lm-chip-img {
+    width: 22px;
+    height: 22px;
+  }
+}

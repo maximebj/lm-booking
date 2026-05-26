@@ -10,14 +10,20 @@ defined( 'ABSPATH' ) || exit;
 class LM_Booking_Checkout {
 
     public function __construct() {
-        // Final validation before payment.
+        // Final validation before payment — classic checkout.
         add_action( 'woocommerce_checkout_process', [ $this, 'validate_at_checkout' ] );
 
-        // Save booking data to order line items.
+        // Final validation before payment — block checkout (Store API).
+        add_action( 'woocommerce_store_api_checkout_update_order_meta', [ $this, 'validate_at_checkout_block' ] );
+
+        // Save booking data to order line items (fires for both classic and block checkout).
         add_action( 'woocommerce_checkout_create_order_line_item', [ $this, 'save_order_item_meta' ], 10, 4 );
 
-        // Create booking records after order is created.
+        // Create booking records after order is created — classic checkout.
         add_action( 'woocommerce_checkout_order_created', [ $this, 'create_bookings' ] );
+
+        // Create booking records after order is created — block checkout (Store API).
+        add_action( 'woocommerce_store_api_checkout_order_processed', [ $this, 'create_bookings' ] );
     }
 
     /**
@@ -74,6 +80,60 @@ class LM_Booking_Checkout {
     }
 
     /**
+     * Re-validate all bookings in cart at checkout time — block checkout (Store API).
+     * Throws a RouteException to prevent checkout if a slot is no longer available.
+     *
+     * @param WC_Order $order
+     * @throws \Exception On unavailable slot.
+     */
+    public function validate_at_checkout_block( WC_Order $order ): void {
+        if ( ! WC()->cart ) {
+            return;
+        }
+
+        global $wpdb;
+
+        foreach ( WC()->cart->get_cart() as $cart_item ) {
+            if ( empty( $cart_item['_lm_booking'] ) ) {
+                continue;
+            }
+
+            $product_id = $cart_item['product_id'];
+            $start_utc  = $cart_item['_lm_booking_start'];
+            $end_utc    = $cart_item['_lm_booking_end'];
+
+            $wpdb->query( 'START TRANSACTION' );
+
+            $available = LM_Booking_Availability::is_slot_available_locked(
+                $product_id,
+                $start_utc,
+                $end_utc
+            );
+
+            $wpdb->query( 'COMMIT' );
+
+            if ( ! $available ) {
+                $product = wc_get_product( $product_id );
+                $name    = $product ? $product->get_name() : '#' . $product_id;
+
+                $wp_tz = wp_timezone();
+                $start = new DateTime( $start_utc, new DateTimeZone( 'UTC' ) );
+                $start->setTimezone( $wp_tz );
+
+                throw new \Exception(
+                    sprintf(
+                        /* translators: 1: product name, 2: date, 3: time */
+                        __( 'Le créneau pour « %1$s » le %2$s à %3$s n\'est plus disponible. Veuillez modifier votre panier.', 'lm-booking' ),
+                        esc_html( $name ),
+                        wp_date( get_option( 'date_format' ), $start->getTimestamp() ),
+                        $start->format( 'H:i' )
+                    )
+                );
+            }
+        }
+    }
+
+    /**
      * Save booking data as order item meta.
      */
     public function save_order_item_meta( WC_Order_Item_Product $item, string $cart_item_key, array $values, WC_Order $order ): void {
@@ -107,8 +167,16 @@ class LM_Booking_Checkout {
 
     /**
      * Create booking records in wp_lm_bookings after order creation.
+     * Fires for both classic checkout (woocommerce_checkout_order_created)
+     * and block checkout (woocommerce_store_api_checkout_order_processed).
      */
     public function create_bookings( WC_Order $order ): void {
+        // Guard against double-creation if both hooks somehow fire for the same order.
+        $existing = LM_Booking_Repository::get_by_order( $order->get_id() );
+        if ( ! empty( $existing ) ) {
+            return;
+        }
+
         foreach ( $order->get_items() as $item ) {
             if ( 'yes' !== $item->get_meta( '_lm_booking' ) ) {
                 continue;

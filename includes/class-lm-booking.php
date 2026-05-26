@@ -49,6 +49,7 @@ class LM_Booking {
         if ( is_admin() ) {
             require_once LM_BOOKING_PATH . 'admin/class-lm-booking-admin.php';
             require_once LM_BOOKING_PATH . 'admin/class-lm-booking-meta-boxes.php';
+            require_once LM_BOOKING_PATH . 'admin/class-lm-booking-calendar.php';
         }
     }
 
@@ -74,6 +75,7 @@ class LM_Booking {
         if ( is_admin() ) {
             new LM_Booking_Admin();
             new LM_Booking_Meta_Boxes();
+            new LM_Booking_Calendar();
         }
 
         // Front-end scripts.
