@@ -611,13 +611,22 @@ class LM_Booking_Calendar
             $order_data    = $orders[$oid] ?? null;
             $booking_ttc   = $order_data['item_totals'][$item_id] ?? 0.0;
 
+            // Statut visuel basé sur le statut WC de la commande (même logique que
+            // orderStatusToBooking() côté JS) : completed → vert, cancelled → rouge, reste → jaune.
+            $order_status   = $order_data['order_status'] ?? '';
+            $display_status = match ( true ) {
+                $order_status === 'completed'                                       => 'completed',
+                in_array( $order_status, ['cancelled', 'refunded', 'failed'], true ) => 'cancelled',
+                default                                                             => 'pending',
+            };
+
             $hydrated[] = [
                 'id'              => (int) $row->id,
                 'product_id'      => $pid,
                 'order_id'        => $oid,
                 'order_number'    => $order_data['order_number'] ?? (string) $oid,
                 'order_url'       => $order_data['order_url']    ?? '#',
-                'status'          => $row->status,
+                'status'          => $display_status,
                 'date_local'      => $start_local->format('Y-m-d'),
                 'time_local'      => $start_local->format('H:i') . '–' . $end_local->format('H:i'),
                 'product_title'   => $products[$pid]['title'] ?? __('(produit supprimé)', 'lm-booking'),
