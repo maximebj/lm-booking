@@ -20,11 +20,11 @@ Fichiers concernés :
 
 ```
 1. Affichage créneaux       GET  /lm-booking/v1/availability   → get_available_slots()
-2. Ajout au panier          POST /lm-booking/v1/add-to-cart    → is_slot_available() + cart->add_to_cart()
-3. Stockage panier          meta _lm_booking* sur le cart item (UTC)
-4. Validation au paiement   hook Store API → is_slot_available_locked() (FOR UPDATE)
+2. Ajout au panier          POST /lm-booking/v1/add-to-cart    → get_slot() (règles + prix) + is_slot_available() (capacité)
+3. Stockage panier          meta _lm_booking* sur le cart item (UTC + prix serveur)
+4. Validation au paiement   hook Store API → is_slot_available() (best-effort, message d'erreur)
 5. Persistance commande     hook → save_order_item_meta() (meta sur les lignes)
-6. Création réservation     hook → create_bookings() → Repository::create() (status = pending)
+6. Création réservation     hook → create_bookings() : comptage verrouillé + INSERT atomiques (status = pending)
 ```
 
 La donnée du créneau circule **en UTC** sur tout le parcours (REST → panier → meta de ligne →
@@ -59,24 +59,30 @@ Chaque créneau renvoyé contient `start`/`end` (affichage local), `start_utc`/`
 Étapes :
 
 1. vérifie que le produit existe et est de type `booking` ;
-2. **revalide la disponibilité** via
+2. **valide le créneau** via
+   [`get_slot()`](../includes/class-lm-booking-availability.php#L144) → renvoie `422` si le
+   couple `(start_utc, end_utc)` ne correspond à aucun créneau généré (horaires, durée, grille,
+   fenêtre d'avance). Le créneau retourné porte aussi le **prix calculé serveur** ;
+3. **vérifie la capacité** via
    [`is_slot_available()`](../includes/class-lm-booking-availability.php#L117) → renvoie `409`
-   si le créneau n'est plus libre ;
-3. charge le panier si besoin (`wc_load_cart()`) ;
-4. ajoute la réservation avec ses meta de créneau :
+   si le créneau est complet ;
+4. charge le panier si besoin (`wc_load_cart()`) ;
+5. ajoute la réservation avec ses meta de créneau et le prix serveur :
 
 ```php
 $cart_item_data = [
     '_lm_booking'       => true,
     '_lm_booking_start' => $start_utc,
     '_lm_booking_end'   => $end_utc,
+    '_lm_booking_price' => (float) $slot['price'], // prix calculé serveur, jamais le client
 ];
 $cart_key = WC()->cart->add_to_cart($product_id, 1, 0, [], $cart_item_data);
 ```
 
-5. ajoute les **add-ons** comme articles liés. Sécurité : seuls les `product_id` présents dans
-   `get_booking_addons()` du produit sont acceptés (`in_array($id, $allowed_addon_ids, true)`).
-   Un éventuel `price_override` configuré est stocké dans la meta `_lm_booking_price_override`.
+6. ajoute les **add-ons** comme articles liés. Sécurité : les add-ons sont indexés par
+   `product_id` à partir de `get_booking_addons()` ; seuls les IDs configurés sont acceptés, la
+   quantité est **clampée au `max_qty`** (`min($max_qty, max(1, $qty))`), et un éventuel
+   `price_override` configuré est stocké dans `_lm_booking_price_override`.
 
 ## 3. Comportement dans le panier
 
@@ -98,27 +104,25 @@ règles métier du panier :
 > `woocommerce_add_to_cart_validation`. Le mount React de la fiche produit est encore un
 > placeholder (`<div id="lm-booking-form">TODO</div>`).
 
-## 4. Validation finale au paiement (anti-course)
+## 4. Validation au paiement (best-effort)
 
-Au moment du paiement, on **revalide** chaque réservation du panier, cette fois avec un
-verrou base pour éviter les doubles réservations concurrentes (race condition).
+Au moment du paiement, on **revérifie la capacité** de chaque réservation du panier, pour
+afficher un message d'erreur convivial si un créneau s'est rempli entre-temps.
 
 Hook Store API : `woocommerce_store_api_checkout_update_order_meta` →
-[`validate_at_checkout_block()`](../includes/class-lm-booking-checkout.php#L89) (l'équivalent
+[`validate_at_checkout_block()`](../includes/class-lm-booking-checkout.php#L82) (l'équivalent
 classique `validate_at_checkout()` existe aussi).
 
 ```php
-$wpdb->query('START TRANSACTION');
-$available = LM_Booking_Availability::is_slot_available_locked($product_id, $start_utc, $end_utc);
-$wpdb->query('COMMIT');
+$available = LM_Booking_Availability::is_slot_available($product_id, $start_utc, $end_utc);
 ```
-
-[`is_slot_available_locked()`](../includes/class-lm-booking-availability.php#L132) utilise
-[`count_overlapping_locked()`](../includes/class-lm-booking-repository.php#L157), qui ajoute
-`FOR UPDATE` à la requête de comptage.
 
 En cas d'indisponibilité, le checkout Block **lève une `\Exception`** (et non `wc_add_notice()`,
 qui est réservé au checkout classique) pour bloquer le paiement.
+
+> Ce contrôle est volontairement **non verrouillé** : c'est un garde-fou UX. La garantie
+> anti-survente réelle (verrou + insertion atomiques) est à l'étape 6 — voir
+> [securite.md](securite.md#c--verrou-for-update-inefficace-).
 
 ## 5. Persistance sur la commande
 
@@ -139,10 +143,15 @@ Hook Store API : `woocommerce_store_api_checkout_order_processed` →
 
 1. **garde anti-doublon** : si des réservations existent déjà pour cette commande
    (`get_by_order()`), on sort — protège contre un double déclenchement des hooks ;
-2. pour chaque ligne marquée `_lm_booking`, insère une ligne via
+2. pour chaque ligne marquée `_lm_booking`, **dans une seule transaction** : comptage
+   verrouillé (`is_slot_available_locked()` → `SELECT … FOR UPDATE`) **puis**
    [`Repository::create()`](../includes/class-lm-booking-repository.php#L34) avec
-   `status = 'pending'` ;
-3. l'`id` de réservation créé est réécrit en meta de ligne (`_lm_booking_id`).
+   `status = 'pending'`, le tout suivi d'un `COMMIT`. C'est cette atomicité check+insert qui
+   sérialise les checkouts concurrents et empêche la survente ;
+3. l'`id` de réservation créé est réécrit en meta de ligne (`_lm_booking_id`) ;
+4. si un créneau s'est rempli entre l'étape 4 et ici (course rare), la réservation n'est pas
+   créée : `flag_oversold_order()` passe la commande **en attente** et ajoute une note pour
+   traitement manuel.
 
 C'est à ce moment que la réservation existe enfin dans `wp_lm_bookings` et entre dans le calcul
 de disponibilité des futurs créneaux.
@@ -174,6 +183,7 @@ De plus, une commande `completed` dont le créneau est passé bascule la réserv
 | ----------------------------- | -------------- | ----------------------------------------------- |
 | `_lm_booking`                 | cart + ligne   | marque une réservation                          |
 | `_lm_booking_start` / `_end`  | cart + ligne   | créneau en UTC                                  |
+| `_lm_booking_price`           | cart           | prix du créneau calculé serveur (règles de prix) |
 | `_lm_booking_id`              | ligne          | id de l'enregistrement `wp_lm_bookings`         |
 | `_lm_booking_addon`           | cart + ligne   | marque un add-on                                |
 | `_lm_booking_parent_id`       | cart + ligne   | produit de réservation parent de l'add-on       |

@@ -8,6 +8,7 @@ Documentation technique du plugin de réservation. Destinée à l'équipe de dé
 | -------- | ------- |
 | [parcours-reservation.md](parcours-reservation.md) | Cheminement de la donnée d'une réservation, de la sélection du créneau sur la fiche produit à la création de l'enregistrement en base après paiement (REST → panier → checkout → `wp_lm_bookings`). |
 | [calendrier-recuperation-donnees.md](calendrier-recuperation-donnees.md) | Comment la vue admin **Réservations** récupère les réservations d'un mois, les enrichit avec les données WooCommerce et les affiche (grille mensuelle + panneau journalier). |
+| [securite.md](securite.md) | État des lieux sécurité : failles identifiées sur le parcours de réservation, leur statut (corrigé / à traiter) et les correctifs mis en place. |
 
 ## Concepts transverses
 

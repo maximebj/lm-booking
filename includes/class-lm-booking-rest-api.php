@@ -136,7 +136,19 @@ class LM_Booking_REST_API {
             );
         }
 
-        // Verify availability.
+        // Resolve the slot against the product's generated slots — enforces
+        // opening hours, duration, the slot grid and the advance window, and
+        // yields the authoritative server-computed price (slot price rules).
+        // The client is never trusted for the price.
+        $slot = LM_Booking_Availability::get_slot( $product, $start_utc, $end_utc );
+        if ( null === $slot ) {
+            return new WP_REST_Response(
+                [ 'message' => __( 'Ce créneau n\'est pas valide.', 'lm-booking' ) ],
+                422
+            );
+        }
+
+        // Verify availability (capacity).
         if ( ! LM_Booking_Availability::is_slot_available( $product_id, $start_utc, $end_utc ) ) {
             return new WP_REST_Response(
                 [ 'message' => __( 'Ce créneau n\'est plus disponible.', 'lm-booking' ) ],
@@ -154,6 +166,7 @@ class LM_Booking_REST_API {
             '_lm_booking'       => true,
             '_lm_booking_start' => $start_utc,
             '_lm_booking_end'   => $end_utc,
+            '_lm_booking_price' => (float) $slot['price'],
         ];
 
         $cart_key = WC()->cart->add_to_cart( $product_id, 1, 0, [], $cart_item_data );
@@ -171,16 +184,27 @@ class LM_Booking_REST_API {
         if ( ! empty( $addons ) && is_array( $addons ) ) {
             LM_Booking_Addons::$adding_addon_context = true;
 
-            $booking_addons        = $product->get_booking_addons();
-            $allowed_addon_ids     = array_map( fn( $ba ) => (int) $ba['product_id'], $booking_addons );
+            // Index the add-ons configured on this product by their ID, so we
+            // can validate each requested add-on against its own settings.
+            $addon_config = [];
+            foreach ( $product->get_booking_addons() as $ba ) {
+                $addon_config[ (int) $ba['product_id'] ] = $ba;
+            }
 
             foreach ( $addons as $addon ) {
                 $addon_product_id = absint( $addon['product_id'] ?? 0 );
-                $addon_qty        = max( 1, absint( $addon['quantity'] ?? 1 ) );
 
-                if ( $addon_product_id <= 0 || ! in_array( $addon_product_id, $allowed_addon_ids, true ) ) {
+                // Reject add-ons that are not configured on this product.
+                if ( ! isset( $addon_config[ $addon_product_id ] ) ) {
                     continue;
                 }
+
+                $config = $addon_config[ $addon_product_id ];
+
+                // Clamp the requested quantity to the configured maximum — the
+                // client must not be trusted to respect max_qty (UI-only limit).
+                $max_qty   = max( 1, (int) ( $config['max_qty'] ?? 1 ) );
+                $addon_qty = min( $max_qty, max( 1, absint( $addon['quantity'] ?? 1 ) ) );
 
                 $addon_data = [
                     '_lm_booking_addon'      => true,
@@ -189,11 +213,8 @@ class LM_Booking_REST_API {
                 ];
 
                 // Apply price override if configured.
-                foreach ( $booking_addons as $ba ) {
-                    if ( (int) $ba['product_id'] === $addon_product_id && null !== ( $ba['price_override'] ?? null ) ) {
-                        $addon_data['_lm_booking_price_override'] = (float) $ba['price_override'];
-                        break;
-                    }
+                if ( null !== ( $config['price_override'] ?? null ) ) {
+                    $addon_data['_lm_booking_price_override'] = (float) $config['price_override'];
                 }
 
                 $addon_key = WC()->cart->add_to_cart( $addon_product_id, $addon_qty, 0, [], $addon_data );

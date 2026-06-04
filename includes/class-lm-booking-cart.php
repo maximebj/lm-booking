@@ -25,8 +25,8 @@ class LM_Booking_Cart
         // Remove child add-ons when parent booking is removed.
         add_action('woocommerce_remove_cart_item', [$this, 'remove_linked_addons'], 10, 2);
 
-        // Apply price overrides for add-ons.
-        add_action('woocommerce_before_calculate_totals', [$this, 'apply_addon_price_overrides']);
+        // Apply server-computed prices for bookings (slot pricing) and add-ons.
+        add_action('woocommerce_before_calculate_totals', [$this, 'apply_price_overrides']);
 
         // Style add-ons as sub-items in the cart.
         add_filter('woocommerce_cart_item_name', [$this, 'indent_addon_name'], 10, 3);
@@ -124,15 +124,23 @@ class LM_Booking_Cart
     }
 
     /**
-     * Apply price overrides for add-on cart items.
+     * Apply server-computed prices to booking and add-on cart items.
+     *
+     * Both the booking slot price (e.g. weekend rules) and the add-on price
+     * override are computed server-side at add-to-cart time and stored on the
+     * cart item; here we push them onto the product so WC totals reflect them.
      */
-    public function apply_addon_price_overrides(WC_Cart $cart): void
+    public function apply_price_overrides(WC_Cart $cart): void
     {
         if (is_admin() && ! defined('DOING_AJAX')) {
             return;
         }
 
         foreach ($cart->get_cart() as $cart_item) {
+            if (! empty($cart_item['_lm_booking']) && isset($cart_item['_lm_booking_price'])) {
+                $cart_item['data']->set_price((float) $cart_item['_lm_booking_price']);
+            }
+
             if (! empty($cart_item['_lm_booking_addon']) && isset($cart_item['_lm_booking_price_override'])) {
                 $cart_item['data']->set_price((float) $cart_item['_lm_booking_price_override']);
             }

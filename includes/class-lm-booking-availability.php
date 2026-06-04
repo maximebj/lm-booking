@@ -142,6 +142,57 @@ class LM_Booking_Availability {
     }
 
     /**
+     * Find the generated slot that exactly matches a submitted (start, end)
+     * pair, or null if none matches.
+     *
+     * Matching against the generated slots enforces the booking rules that are
+     * otherwise only applied when *displaying* slots — opening hours, duration,
+     * the slot grid (step) and the advance window — AND yields the
+     * authoritative, server-computed price for the slot. The client must never
+     * be trusted for the price: always read it from the returned slot.
+     *
+     * Capacity is reflected in the slot's 'available' field but not enforced
+     * here — use is_slot_available[_locked]() to gate on capacity.
+     *
+     * @param WC_Product_Booking $product
+     * @param string             $start_utc (Y-m-d H:i:s, UTC)
+     * @param string             $end_utc   (Y-m-d H:i:s, UTC)
+     * @return array{start: string, end: string, start_utc: string, end_utc: string, available: int, price: float}|null
+     */
+    public static function get_slot( WC_Product_Booking $product, string $start_utc, string $end_utc ): ?array {
+        $utc   = new DateTimeZone( 'UTC' );
+        $start = DateTimeImmutable::createFromFormat( 'Y-m-d H:i:s', $start_utc, $utc );
+        $end   = DateTimeImmutable::createFromFormat( 'Y-m-d H:i:s', $end_utc, $utc );
+
+        if ( ! $start || ! $end ) {
+            return null;
+        }
+
+        // Normalise to canonical UTC strings for an exact comparison.
+        $start_norm = $start->format( 'Y-m-d H:i:s' );
+        $end_norm   = $end->format( 'Y-m-d H:i:s' );
+
+        // The slot's local date drives which day's slots to generate.
+        $local_date = $start->setTimezone( wp_timezone() )->format( 'Y-m-d' );
+
+        foreach ( self::get_available_slots( $product, $local_date ) as $slot ) {
+            if ( $slot['start_utc'] === $start_norm && $slot['end_utc'] === $end_norm ) {
+                return $slot;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Whether a submitted slot matches one of the product's generated slots.
+     * Thin wrapper around get_slot() — see it for the rules enforced.
+     */
+    public static function is_valid_slot( WC_Product_Booking $product, string $start_utc, string $end_utc ): bool {
+        return null !== self::get_slot( $product, $start_utc, $end_utc );
+    }
+
+    /**
      * Get the opening hours for a specific date, considering overrides.
      *
      * @return array{start: string, end: string}|null  Null if closed.
