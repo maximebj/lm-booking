@@ -55,6 +55,19 @@ class LM_Booking_Meta_Boxes {
     public function save_booking_meta( int $post_id ): void {
         // phpcs:disable WordPress.Security.NonceVerification.Missing — WC handles the nonce.
 
+        // Booking type — one select in the UI, stored as two metas (mode + unit).
+        if ( isset( $_POST['_lm_booking_type'] ) ) {
+            $type = sanitize_text_field( wp_unslash( $_POST['_lm_booking_type'] ) );
+
+            if ( 'fixed' === $type ) {
+                update_post_meta( $post_id, '_lm_booking_mode', 'fixed' );
+                delete_post_meta( $post_id, '_lm_booking_unit' );
+            } elseif ( in_array( $type, WC_Product_Booking::UNITS, true ) ) {
+                update_post_meta( $post_id, '_lm_booking_mode', 'flexible' );
+                update_post_meta( $post_id, '_lm_booking_unit', $type );
+            }
+        }
+
         // Simple integer fields.
         $int_fields = [
             '_lm_booking_duration',

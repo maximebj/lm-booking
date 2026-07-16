@@ -51,6 +51,37 @@ class WC_Product_Booking extends WC_Product {
     */
 
     /**
+     * Valid booking modes.
+     */
+    public const MODES = [ 'fixed', 'flexible' ];
+
+    /**
+     * Valid booking units (flexible mode only).
+     */
+    public const UNITS = [ 'hour', 'half_day', 'day' ];
+
+    /**
+     * Get the booking mode. Products saved before the mode existed have no
+     * meta and behave as 'fixed'.
+     *
+     * @return string 'fixed' | 'flexible'
+     */
+    public function get_booking_mode(): string {
+        $mode = $this->get_meta( '_lm_booking_mode' );
+        return in_array( $mode, self::MODES, true ) ? $mode : 'fixed';
+    }
+
+    /**
+     * Get the booking unit (only meaningful in flexible mode).
+     *
+     * @return string 'hour' | 'half_day' | 'day'
+     */
+    public function get_booking_unit(): string {
+        $unit = $this->get_meta( '_lm_booking_unit' );
+        return in_array( $unit, self::UNITS, true ) ? $unit : 'hour';
+    }
+
+    /**
      * Get the booking duration in minutes.
      */
     public function get_booking_duration(): int {

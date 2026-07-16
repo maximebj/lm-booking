@@ -56,5 +56,12 @@ class LM_Booking_Install {
      */
     private static function set_default_options(): void {
         add_option( 'lm_booking_db_version', LM_BOOKING_VERSION );
+        add_option( 'lm_booking_default_type', 'fixed' );
+        add_option( 'lm_booking_half_day_hours', [
+            'morning_start'   => '09:00',
+            'morning_end'     => '13:00',
+            'afternoon_start' => '14:00',
+            'afternoon_end'   => '18:00',
+        ] );
     }
 }

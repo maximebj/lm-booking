@@ -37,8 +37,11 @@ class LM_Booking {
         $dir = LM_BOOKING_PATH . 'includes/';
 
         require_once $dir . 'class-lm-booking-install.php';
+        require_once $dir . 'class-lm-booking-settings.php';
         require_once $dir . 'class-wc-product-booking.php';
         require_once $dir . 'class-lm-booking-repository.php';
+        require_once $dir . 'availability/abstract-lm-booking-mode.php';
+        require_once $dir . 'availability/class-lm-booking-mode-fixed.php';
         require_once $dir . 'class-lm-booking-availability.php';
         require_once $dir . 'class-lm-booking-addons.php';
         require_once $dir . 'class-lm-booking-cart.php';
@@ -65,6 +68,7 @@ class LM_Booking {
         add_action( 'init', [ $this, 'load_textdomain' ] );
 
         // Initialize components.
+        new LM_Booking_Settings();
         new LM_Booking_Addons();
         new LM_Booking_Cart();
         new LM_Booking_Checkout();
